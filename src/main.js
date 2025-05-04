@@ -21,7 +21,13 @@ let config = {
         pixelArt: true  // prevent pixel art from getting blurred when scaled
     },
     width: 600,
-    height: 1000,
+    height: 950,
+    physics: {
+        default: "arcade",
+        arcade: {
+            debug: false
+        }
+    },
     scene: [Move]
 }
 

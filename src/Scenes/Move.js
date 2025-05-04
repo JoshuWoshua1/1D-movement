@@ -8,27 +8,89 @@ class Move extends Phaser.Scene {
     }
 
     preload() {
-        this.load.setPath("./assets/");                  // Set load path
-        this.load.image("Boolat", "tile_0000.png");     // boolatt
-        this.load.image("Plane", "ship_0009.png");       // airplane
+        let l = this.load;
+        l.setPath("./assets/");                           // Set load path
+        l.image("Boolat", "tile_0000.png");              // boolatt
+        l.image("Plane", "ship_0009.png");                // airplane
+        l.image("tiles", "tiles_packed.png");            // background tileset
+        l.image("enemy", "ship_0018.png");
+        l.tilemapTiledJSON("map", "Background.json");     // tilemap JSON
+        for (let i = 0; i <= 9; i++) {                   // digits for score
+            this.load.image(`digit_${i}`, `digit_${i}.png`);
+        }
     }
 
     create() {
         let my = this.my;
-        my.sprite.playerPlane = this.add.sprite(300, 900, "Plane");
+
+        //tilemap 1
+        this.map1 = this.add.tilemap("map", 16, 16, 10, 10);
+        this.tileset = this.map1.addTilesetImage("tiles_packed", "tiles");
+        this.bgLayer1 = this.map1.createLayer("Background", this.tileset, 0, 0);
+        this.bgLayer1.setScale(2.5);
+        //tilemap 2
+        this.map2 = this.add.tilemap("map", 16, 16, 10, 10);
+        this.tileset = this.map2.addTilesetImage("tiles_packed", "tiles");
+        this.bgLayer2 = this.map2.createLayer("Background", this.tileset, 0, -this.bgLayer1.displayHeight);
+        this.bgLayer2.setScale(2.5);
+
+        //score & sprites
+        this.score = 0;
+        this.digitSprites = [];
+        let startX = 460; 
+        let digitSpacing = 24;
+
+        for (let i = 0; i < 6; i++) {
+            let digit = this.add.image(startX + i * digitSpacing, 930, 'digit_0');
+            digit.setScale(2);
+            this.digitSprites.push(digit);
+            console.log(this.digitSprites);
+        }
+
+        //plane sprite
+        my.sprite.playerPlane = this.physics.add.sprite(300, 850, "Plane");
         my.sprite.playerPlane.setScale(3);
+
+        //enemy sprite group
+        this.enemies = this.physics.add.group();
+        let collidersTime = Phaser.Math.Between(1000, 3000);
+        
+        this.time.addEvent({
+            delay: collidersTime, // spawn random 0.5-3 seconds
+            callback: () => this.spawnEnemy(),
+            loop: true
+        });
 
         /* this.Boolat = this.add.sprite(0,0, "Boolat");
         this.Boolat.setScale(1.5);
         this.Boolat.setActive(false).setVisible(false) */
 
-        my.sprite.Boolats = []; // Boolat sprite list
+        my.sprite.Boolats = this.physics.add.group(); // Boolat sprite group w/ physics
 
         this.shootCDC = 0;  //initalize boolat cooldown
         this.Cooldown = 3; //time between shots
-        this.maxBoolat = 8; //max number of boolats
+        this.maxBoolat = 12; //max number of boolats
+
+        this.physics.add.overlap(my.sprite.Boolats, this.enemies, (boolat, enemy) => {
+            boolat.destroy();
+        
+            enemy.health -= 1;
+            this.score += 5;
+            this.updateScoreDisplay();
+        
+            if (enemy.health <= 0) {
+                enemy.disableBody(true, true);  // Enemy "dies"
+                this.score += 50;
+                this.updateScoreDisplay();
+            }
+        });
+
+        //background scroll initialization
+        this.bgLayers = [this.bgLayer1, this.bgLayer2];
+        this.scrollSpeed = 3;
 
         this.shoot = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        this.shift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
         this.left = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
         this.right = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     }
@@ -43,33 +105,79 @@ class Move extends Phaser.Scene {
         //movment left and right
         if (this.left.isDown && my.sprite.playerPlane.x > 0) {
             my.sprite.playerPlane.x -= 8;
+            if (this.shift.isDown && my.sprite.playerPlane.x > 0) {
+                my.sprite.playerPlane.x -= 8;
+            }
         }
         if (this.right.isDown && my.sprite.playerPlane.x < 600) {
             my.sprite.playerPlane.x += 8;
+            if (this.shift.isDown && my.sprite.playerPlane.x < 600) {
+                my.sprite.playerPlane.x += 8;
+            }
         }
 
         //shooting boolats
-        if (this.shoot.isDown && this.shootCDC <= 0 && my.sprite.Boolats.length < this.maxBoolat) {
+        if (this.shoot.isDown && this.shootCDC <= 0 && my.sprite.Boolats.getLength() < this.maxBoolat) {
         //if (Phaser.Input.Keyboard.JustDown(this.shoot)) {
-            let Boolat = this.add.sprite(my.sprite.playerPlane.x, my.sprite.playerPlane.y - 27, "Boolat")
-            Boolat.setActive(true).setVisible(true);
+            let Boolat = this.physics.add.sprite(my.sprite.playerPlane.x, my.sprite.playerPlane.y - 27, "Boolat");
             Boolat.setScale(2);
-            my.sprite.Boolats.push(Boolat);
+            Boolat.setVelocityY(-300);  // Move upward
+            Boolat.setCollideWorldBounds(true);
+            Boolat.body.onWorldBounds = true;
+            my.sprite.Boolats.add(Boolat);
             console.log(my.sprite.Boolats) //console log to show list of boolats
             
             this.shootCDC = this.Cooldown;
         }
-        //moving the boolatts
-        for (let Proj of my.sprite.Boolats) {
+        //moving the boolatts 
+        for (let Proj of my.sprite.Boolats.getChildren()) {
             if (Proj) {
                 Proj.y -= 15;
                 // Optionally deactivate if off screen
-                if (Proj.y < 0) {   
-                    Proj.setActive(false).setVisible(false)
-                    my.sprite.Boolats = my.sprite.Boolats.filter((Proj) => Proj.y > 0); // delete old boolats
+                if (Proj.y < 0) {
+                    Proj.destroy();
                 }
             }
         }
 
+        // background scroll
+        for (let layer of this.bgLayers) {
+            layer.y += this.scrollSpeed;
+        
+            // If layer is entirely below the screen, move it back above the other
+            if (layer.y >= this.bgLayer1.displayHeight) {
+                // Find the other layer
+                let other = this.bgLayers.find(l => l !== layer);
+                layer.y = other.y - layer.displayHeight + this.scrollSpeed;
+            }
+        }
+        
+    }
+
+    spawnEnemy() {
+        let enemy = this.enemies.getFirstDead();
+    
+        if (!enemy) {
+            enemy = this.enemies.create(Phaser.Math.Between(50, 550), -50, 'enemy'); // assuming 600px wide screen
+            enemy.setScale(2);
+            enemy.setVelocityY(200);
+            enemy.setCollideWorldBounds(false);
+        } else {
+            enemy.setPosition(Phaser.Math.Between(50, 550), -50);
+            enemy.setVelocityY(200);
+            enemy.setActive(true).setVisible(true);
+        }
+
+        enemy.health = 3;
+    }
+
+    updateScoreDisplay() {
+        let scoreStr = this.score.toString().padStart(6, '0');
+    
+        for (let i = 0; i < scoreStr.length; i++) {
+            let digitValue = scoreStr[i];
+            this.digitSprites[i].setTexture(`digit_${digitValue}`);
+        }
     }
 }
+
