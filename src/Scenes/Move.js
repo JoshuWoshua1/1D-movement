@@ -48,7 +48,7 @@ class Move extends Phaser.Scene {
         }
 
         //plane sprite
-        my.sprite.playerPlane = this.physics.add.sprite(300, 850, "Plane");
+        my.sprite.playerPlane = this.physics.add.sprite(300, 850, "Plane"); 
         my.sprite.playerPlane.setScale(3);
 
         //enemy sprite group
