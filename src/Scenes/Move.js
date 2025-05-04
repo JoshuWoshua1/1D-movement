@@ -53,7 +53,9 @@ class Move extends Phaser.Scene {
         //if (Phaser.Input.Keyboard.JustDown(this.shoot)) {
             let Boolat = this.add.sprite(my.sprite.playerPlane.x, my.sprite.playerPlane.y - 27, "Boolat")
             Boolat.setActive(true).setVisible(true);
+            Boolat.setScale(2);
             my.sprite.Boolats.push(Boolat);
+            console.log(my.sprite.Boolats) //console log to show list of boolats
             
             this.shootCDC = this.Cooldown;
         }
@@ -63,6 +65,7 @@ class Move extends Phaser.Scene {
                 Proj.y -= 15;
                 // Optionally deactivate if off screen
                 if (Proj.y < 0) {   
+                    Proj.setActive(false).setVisible(false)
                     my.sprite.Boolats = my.sprite.Boolats.filter((Proj) => Proj.y > 0); // delete old boolats
                 }
             }
