@@ -37,15 +37,23 @@ class Move extends Phaser.Scene {
         //score & sprites
         this.score = 0;
         this.digitSprites = [];
-        let startX = 460; 
         let digitSpacing = 24;
 
+        //score initialization
         for (let i = 0; i < 6; i++) {
-            let digit = this.add.image(startX + i * digitSpacing, 930, 'digit_0');
+            let digit = this.add.image(460 + i * digitSpacing, 930, 'digit_0');
             digit.setScale(2);
             this.digitSprites.push(digit);
-            console.log(this.digitSprites);
         }
+
+        this.level = 1;
+        this.levelDigitSprites = [];
+        //level counter
+        for (let i = 0; i< 2; i++) {
+            let levelDig = this.add.image(20 + i * digitSpacing, 20, 'digit_0');
+            levelDig.setScale(2);
+            this.levelDigitSprites.push(levelDig);
+        } this.updateLevelDisplay();
 
         //plane sprite
         my.sprite.playerPlane = this.physics.add.sprite(300, 850, "Plane"); 
@@ -80,7 +88,7 @@ class Move extends Phaser.Scene {
         //trash hitting player
         this.physics.add.overlap(my.sprite.playerPlane, this.trashMobs, (playerPlane, trash) => {
             trash.destroy();
-            this.playerHP -= ;
+            this.playerHP -= trash.health*3;
             console.log(this.playerHP);
         })
         //bullets hitting trash
@@ -187,6 +195,15 @@ class Move extends Phaser.Scene {
         for (let i = 0; i < scoreStr.length; i++) {
             let digitValue = scoreStr[i];
             this.digitSprites[i].setTexture(`digit_${digitValue}`);
+        }
+    }
+
+    updateLevelDisplay() {
+        let levelStr = this.level.toString().padStart(2, '0');
+    
+        for (let i = 0; i < levelStr.length; i++) {
+            let digitValue = levelStr[i];
+            this.levelDigitSprites[i].setTexture(`digit_${digitValue}`);
         }
     }
 
