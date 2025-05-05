@@ -13,7 +13,7 @@ class Move extends Phaser.Scene {
         l.image("Boolat", "tile_0000.png");              // boolatt
         l.image("Plane", "ship_0009.png");                // airplane
         l.image("tiles", "tiles_packed.png");            // background tileset
-        l.image("enemy", "ship_0018.png");
+        l.image("enemy", "ship_0018.png");                // basic enemy plane
         l.tilemapTiledJSON("map", "Background.json");     // tilemap JSON
         for (let i = 0; i <= 9; i++) {                   // digits for score
             this.load.image(`digit_${i}`, `digit_${i}.png`);
@@ -50,14 +50,16 @@ class Move extends Phaser.Scene {
         //plane sprite
         my.sprite.playerPlane = this.physics.add.sprite(300, 850, "Plane"); 
         my.sprite.playerPlane.setScale(3);
+        this.playerHP = 100;
 
-        //enemy sprite group
-        this.enemies = this.physics.add.group();
+        //Trash enemy sprite group
+        this.trashMobs = this.physics.add.group();
         let collidersTime = Phaser.Math.Between(1000, 3000);
+        this.trashHP = 3;
         
         this.time.addEvent({
             delay: collidersTime, // spawn random 0.5-3 seconds
-            callback: () => this.spawnEnemy(),
+            callback: () => this.spawnTrash(),
             loop: true
         });
 
@@ -65,21 +67,32 @@ class Move extends Phaser.Scene {
         this.Boolat.setScale(1.5);
         this.Boolat.setActive(false).setVisible(false) */
 
-        my.sprite.Boolats = this.physics.add.group(); // Boolat sprite group w/ physics
+        // Boolat sprite group w/ physics
+        my.sprite.Boolats = this.physics.add.group();
 
+        this.boolatDmg = 1;  //initalize boolat damage
         this.shootCDC = 0;  //initalize boolat cooldown
         this.Cooldown = 3; //time between shots
         this.maxBoolat = 12; //max number of boolats
 
-        this.physics.add.overlap(my.sprite.Boolats, this.enemies, (boolat, enemy) => {
+
+        //Physics events ----------------------------
+        //trash hitting player
+        this.physics.add.overlap(my.sprite.playerPlane, this.trashMobs, (playerPlane, trash) => {
+            trash.destroy();
+            this.playerHP -= ;
+            console.log(this.playerHP);
+        })
+        //bullets hitting trash
+        this.physics.add.overlap(my.sprite.Boolats, this.trashMobs, (boolat, trash) => {
             boolat.destroy();
-        
-            enemy.health -= 1;
+            
+            trash.health -= this.boolatDmg;
             this.score += 5;
             this.updateScoreDisplay();
         
-            if (enemy.health <= 0) {
-                enemy.disableBody(true, true);  // Enemy "dies"
+            if (trash.health <= 0) {
+                trash.disableBody(true, true);  //disable dead enemy
                 this.score += 50;
                 this.updateScoreDisplay();
             }
@@ -121,22 +134,20 @@ class Move extends Phaser.Scene {
         //if (Phaser.Input.Keyboard.JustDown(this.shoot)) {
             let Boolat = this.physics.add.sprite(my.sprite.playerPlane.x, my.sprite.playerPlane.y - 27, "Boolat");
             Boolat.setScale(2);
-            Boolat.setVelocityY(-300);  // Move upward
             Boolat.setCollideWorldBounds(true);
             Boolat.body.onWorldBounds = true;
-            my.sprite.Boolats.add(Boolat);
+            my.sprite.Boolats.add(Boolat);  
             console.log(my.sprite.Boolats) //console log to show list of boolats
-            
             this.shootCDC = this.Cooldown;
         }
         //moving the boolatts 
         for (let Proj of my.sprite.Boolats.getChildren()) {
             if (Proj) {
-                Proj.y -= 15;
-                // Optionally deactivate if off screen
-                if (Proj.y < 0) {
-                    Proj.destroy();
-                }
+               Proj.y -= 15;
+            }
+            // deactivate if off screen
+            if (Proj.y < 0) {
+                Proj.destroy();
             }
         }
 
@@ -154,21 +165,20 @@ class Move extends Phaser.Scene {
         
     }
 
-    spawnEnemy() {
-        let enemy = this.enemies.getFirstDead();
+    spawnTrash() {
+        let trash = this.trashMobs.getFirstDead();
     
-        if (!enemy) {
-            enemy = this.enemies.create(Phaser.Math.Between(50, 550), -50, 'enemy'); // assuming 600px wide screen
-            enemy.setScale(2);
-            enemy.setVelocityY(200);
-            enemy.setCollideWorldBounds(false);
+        if (!trash) {
+            trash = this.trashMobs.create(Phaser.Math.Between(50, 550), -50, 'enemy'); // assuming 600px wide screen
+            trash.setScale(2);
+            trash.setVelocityY(200);
+            trash.setCollideWorldBounds(false);
         } else {
-            enemy.setPosition(Phaser.Math.Between(50, 550), -50);
-            enemy.setVelocityY(200);
-            enemy.setActive(true).setVisible(true);
+            trash.setPosition(Phaser.Math.Between(50, 550), -50);
+            trash.setVelocityY(200);
+            trash.setActive(true).setVisible(true);
         }
-
-        enemy.health = 3;
+        trash.health = this.trashHP;
     }
 
     updateScoreDisplay() {
@@ -178,6 +188,11 @@ class Move extends Phaser.Scene {
             let digitValue = scoreStr[i];
             this.digitSprites[i].setTexture(`digit_${digitValue}`);
         }
+    }
+
+    nextWave() {
+        this.trashHP += 1;
+        
     }
 }
 
