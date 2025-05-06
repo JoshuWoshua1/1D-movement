@@ -22,10 +22,19 @@ class Move extends Phaser.Scene {
         for (let i = 0; i <= 9; i++) {                   // digits for score
             this.load.image(`digit_${i}`, `digit_${i}.png`);
         }
+        l.audio("shoot", "shoot.wav");                    //shoot sound
+        l.audio("explosion", "explosion03.wav");         //explosion sound
+        l.audio("clang", "hitmarker_2.mp3");            //ding sound
+        l.audio("damage", "458867__raclure__damage-sound-effect.mp3"); //taking damage sound
     }
 
     create() {
         let my = this.my;
+
+        this.shootSound = this.sound.add("shoot");
+        this.explodeSound = this.sound.add("explosion");
+        this.hitSound = this.sound.add("clang");
+        this.damageSound = this.sound.add("damage");
 
         //tilemap 1
         this.map1 = this.add.tilemap("map", 16, 16, 10, 10);
@@ -75,27 +84,36 @@ class Move extends Phaser.Scene {
 
         //Trash enemy sprite group
         this.trashMobs = this.physics.add.group();
-        let collidersTime = Phaser.Math.Between(1000, 3000);
+        this.collidersTime = Phaser.Math.Between(1000, 3000);
         this.trashHP = 3;
         
         //trash enemy spawner
         this.time.addEvent({
-            delay: collidersTime, // spawn random 0.5-3 seconds
+            delay: this.collidersTime, // spawn random 0.5-3 seconds
             callback: () => this.spawnTrash(),
             loop: true
         });
 
         //regular enemy sprite group
         this.regMobs = this.physics.add.group();
-        let mobsTime = Phaser.Math.Between(4000, 8000);
+        this.mobsTime = Phaser.Math.Between(4000, 8000);
         this.regHP = 10;
 
         //reg enemy spawner
         this.time.addEvent({
-            delay: mobsTime,  //spawn every 4-8 seconds
+            delay: this.mobsTime,  //spawn every 4-8 seconds
             callback: () => this.spawnReg(),
             loop: true
         });
+        //regular enemy pathing
+        this.regPoints = [
+            300, -30,
+            360, 186,
+            240, 377,
+            360, 543,
+            240, 759,
+            360, 990
+        ];
 
         // Boolat sprite group w/ physics
         my.sprite.Boolats = this.physics.add.group();
@@ -111,6 +129,9 @@ class Move extends Phaser.Scene {
         //trash hitting player
         this.physics.add.overlap(my.sprite.playerPlane, this.trashMobs, (playerPlane, trash) => {
             this.bigBoom(playerPlane);
+            this.damageSound.play({
+                volume: 0.5,
+            });
 
             trash.destroy();
             this.playerHP -= trash.health * 3;
@@ -119,6 +140,9 @@ class Move extends Phaser.Scene {
         //reg enemy hitting player
         this.physics.add.overlap(my.sprite.playerPlane, this.regMobs, (playerPlane, mob) => {
             this.bigBoom(playerPlane);
+            this.damageSound.play({
+                volume: 0.5,
+            });
 
             mob.destroy();
             this.playerHP -= mob.health * 2;
@@ -127,6 +151,9 @@ class Move extends Phaser.Scene {
         //evilBoolat hitting player
         this.physics.add.overlap(my.sprite.playerPlane, my.sprite.evilBoolats, (playerPlane, evilBoolat) => {
             this.smallBoom(playerPlane);
+            this.damageSound.play({
+                volume: 0.5,
+            });
 
             evilBoolat.destroy();
             this.playerHP -= 5;
@@ -135,6 +162,9 @@ class Move extends Phaser.Scene {
         //bullets hitting trash
         this.physics.add.overlap(my.sprite.Boolats, this.trashMobs, (boolat, trash) => {
             boolat.destroy();
+            this.hitSound.play({
+                volume: 0.2,
+            });
             this.smallBoom(trash);
             
             trash.health -= this.boolatDmg;
@@ -143,6 +173,9 @@ class Move extends Phaser.Scene {
         
             if (trash.health <= 0) {
                 this.bigBoom(trash);
+                this.explodeSound.play({
+                    volume: 0.3,
+                });
                 trash.destroy();  //disable dead enemy
                 this.score += 50;
                 this.updateScoreDisplay();
@@ -151,6 +184,9 @@ class Move extends Phaser.Scene {
         //bullets hitting reg mobs
         this.physics.add.overlap(my.sprite.Boolats, this.regMobs, (boolat, mob) => {
             boolat.destroy();
+            this.hitSound.play({
+                volume: 0.2,
+            });
             this.smallBoom(mob);
 
             mob.health -= this.boolatDmg;
@@ -159,6 +195,9 @@ class Move extends Phaser.Scene {
         
             if (mob.health <= 0) {
                 this.bigBoom(mob);
+                this.explodeSound.play({
+                    volume: 0.3,
+                });
                 mob.destroy();  //disable dead enemy
                 this.score += 50;
                 this.updateScoreDisplay();
@@ -199,6 +238,10 @@ class Move extends Phaser.Scene {
         //shooting boolats
         if (this.shoot.isDown && this.shootCDC <= 0 && my.sprite.Boolats.getLength() < this.maxBoolat) {
         //if (Phaser.Input.Keyboard.JustDown(this.shoot)) {
+            this.shootSound.play({
+                volume: 0.3,
+                rate: Phaser.Math.FloatBetween(0.93, 1.07)
+            });
             let Boolat = this.physics.add.sprite(my.sprite.playerPlane.x, my.sprite.playerPlane.y - 27, "Boolat");
             Boolat.setScale(2);
             Boolat.setCollideWorldBounds(true);
@@ -277,9 +320,36 @@ class Move extends Phaser.Scene {
     } */
 
     spawnReg() {
-        let mob = this.regMobs.getFirstDead();
+        //let mob = this.regMobs.getFirstDead();
+        let startX = Phaser.Math.Between(-200, 200); // Random left/right variation
+        let path = this.makeOffsetPath(this.regPoints, startX);
     
-        if (!mob) {
+        //path setup
+        let mob = this.add.follower(path, path.points[0].x, path.points[0].y, 'enemy2');
+        this.physics.add.existing(mob); 
+        this.regMobs.add(mob);
+    
+        mob.setScale(2.5);
+        mob.setFlipY(true);
+        mob.health = this.regHP;
+    
+        mob.startFollow({
+            from: 0,
+            to: 1,
+            duration: 12000,
+            ease: 'Linear',
+            repeat: 0,
+            rotateToPath: true,
+            rotationOffset: -90,
+            onComplete: () => {
+                if (mob.boolatTime) {
+                    mob.boolatTime.remove(false);
+                }
+                mob.destroy();
+            }
+        });
+
+        /*if (!mob) {
             mob = this.regMobs.create(Phaser.Math.Between(50, 550), -50, 'enemy2');
             mob.setFlipY(true);
             mob.setScale(2.5);
@@ -289,9 +359,9 @@ class Move extends Phaser.Scene {
             mob.setPosition(Phaser.Math.Between(50, 550), -50);
             mob.setVelocityY(100);
             mob.setActive(true).setVisible(true);
-        }
+        } */
         mob.boolatTime = this.time.addEvent({
-            delay: 3000,  //spawn every 3 seconds
+            delay: 2000,  //spawn every 2 seconds
             callback: () => {
                 if (mob.active) {
                     this.spawnEvilBoolat(mob);
@@ -345,7 +415,10 @@ class Move extends Phaser.Scene {
     }
 
     nextWave() {
-        this.trashHP += 1;
+        this.trashHP *= 1.2;
+        this.regHP *= 1.2;
+        this.collidersTime = Phaser.Math.Between(1000, 3000);
+        this.mobsTime = Phaser.Math.Between(4000, 8000);
         
     }
 
@@ -381,6 +454,14 @@ class Move extends Phaser.Scene {
                 boom.destroy();
             }
         });
+    }
+
+    makeOffsetPath(pointsArray, offsetX) {
+        let offsetPoints = [];
+        for (let i = 0; i < pointsArray.length; i += 2) {
+            offsetPoints.push(pointsArray[i] + offsetX, pointsArray[i + 1]);
+        }
+        return new Phaser.Curves.Spline(offsetPoints);
     }
 }
 
