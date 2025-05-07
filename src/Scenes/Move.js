@@ -87,7 +87,7 @@ class Move extends Phaser.Scene {
 
         //Trash enemy sprite group
         this.trashMobs = this.physics.add.group();
-        this.collidersTime = Phaser.Math.Between(700, 1500);
+        this.collidersTime = Phaser.Math.Between(1500, 1500);
         this.trashHP = 3;
         
         //trash enemy spawner
@@ -102,7 +102,7 @@ class Move extends Phaser.Scene {
 
         //regular enemy sprite group
         this.regMobs = this.physics.add.group();
-        this.mobsTime = Phaser.Math.Between(4000, 8000);
+        this.mobsTime = Phaser.Math.Between(8000, 8000);
         this.regHP = 10;
 
         //reg enemy spawner
@@ -126,10 +126,11 @@ class Move extends Phaser.Scene {
 
         // boss enemy group
         this.bossMobs = this.physics.add.group();
-        this.bossTime = 60;
-        this.enemykill = 60;
+        this.bossTime = 40;
+        this.enemykill = 40;
         this.bossActive = 0;
-        this.bossHP = 80;
+        this.bossHP = 70;
+        this.bossKilled = false;
         //boss starting path
         this.bossStartPath = [
             750, 700,
@@ -265,6 +266,7 @@ class Move extends Phaser.Scene {
                 }
                 boss.destroy();  //disable dead enemy
                 this.bossActive = 0;
+                this.bossKilled = true;
                 this.score += 3330;
                 this.updateScoreDisplay();
             }
@@ -369,6 +371,11 @@ class Move extends Phaser.Scene {
             this.enemykill = 0;
         }
         
+        if (this.bossKilled == true) {
+            this.nextWave();
+            this.scene.launch('upgrades');
+            this.scene.pause();
+        }
     }
 
     spawnTrash() {
@@ -551,11 +558,10 @@ class Move extends Phaser.Scene {
     }
 
     nextWave() {
-        this.trashHP *= 1.2;
-        this.regHP *= 1.2;
-        this.collidersTime = Phaser.Math.Between(1000, 3000);
-        this.mobsTime = Phaser.Math.Between(4000, 8000);
-        
+        this.level += 1;
+        this.regHP += 2;
+        this.bossHP += 5;
+        this.updateLevelDisplay();
     }
 
     bigBoom(name) {
