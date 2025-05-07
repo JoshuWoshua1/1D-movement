@@ -1,1 +1,1 @@
-Class assignment for CMPM 120 where we explore 1D of movement
+CMPM120 game assignment
