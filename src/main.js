@@ -28,10 +28,11 @@ let config = {
             debug: false
         }
     },
-    scene: [Move]
+    scene: [HomeScreen, Move, GameOver]
 }
 
 // Global variable to hold sprites
 var my = {sprite: {}};
+var highScore = 0;
 
 const game = new Phaser.Game(config);

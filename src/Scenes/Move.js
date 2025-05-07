@@ -14,8 +14,8 @@ class Move extends Phaser.Scene {
         l.image("evilBoolat", "eviltile_0000.png");     // evilboolatt
         l.image("Plane", "ship_0009.png");                // airplane
         l.image("tiles", "tiles_packed.png");            // background tileset
-        l.image("enemy2", "ship_0012.png").FlipY;                 // bigger enemy plane
-        l.image("enemy", "ship_0018.png").FlipY;                // basic enemy plane
+        l.image("enemy2", "ship_0012.png");                // bigger enemy plane
+        l.image("enemy", "ship_0018.png");                // basic enemy plane
         l.image("health", "tile_0024.png");              // health indicator
         l.image("boom", "tile_0005.png");                 // explodey
         l.tilemapTiledJSON("map", "Background.json");     // tilemap JSON
@@ -134,7 +134,7 @@ class Move extends Phaser.Scene {
             });
 
             trash.destroy();
-            this.playerHP -= trash.health * 3;
+            this.playerHP -= trash.health * 300;
             this.updateHpDisplay();
         });
         //reg enemy hitting player
@@ -199,7 +199,7 @@ class Move extends Phaser.Scene {
                     volume: 0.3,
                 });
                 mob.destroy();  //disable dead enemy
-                this.score += 50;
+                this.score += 500;
                 this.updateScoreDisplay();
             }
         });
@@ -280,6 +280,15 @@ class Move extends Phaser.Scene {
                 let other = this.bgLayers.find(l => l !== layer);
                 layer.y = other.y - layer.displayHeight + this.scrollSpeed;
             }
+        }
+
+        //game-over screen on death
+        if (this.playerHP <= 0) {
+            if (this.score >= highScore) {
+                highScore = this.score;
+            }
+            this.scene.launch('gameOver');
+            this.scene.pause();
         }
         
     }
@@ -420,10 +429,6 @@ class Move extends Phaser.Scene {
         this.collidersTime = Phaser.Math.Between(1000, 3000);
         this.mobsTime = Phaser.Math.Between(4000, 8000);
         
-    }
-
-    init_game() {
-        this.trashHP = 3;
     }
 
     bigBoom(name) {
