@@ -28,7 +28,7 @@ let config = {
             debug: false
         }
     },
-    scene: [HomeScreen, Move, GameOver]
+    scene: [HomeScreen, Move, GameOver, Controls]
 }
 
 // Global variable to hold sprites

@@ -13,12 +13,13 @@ class Move extends Phaser.Scene {
         l.image("Boolat", "tile_0000.png");              // boolatt
         l.image("evilBoolat", "eviltile_0000.png");     // evilboolatt
         l.image("Plane", "ship_0009.png");                // airplane
-        l.image("tiles", "tiles_packed.png");            // background tileset
+        l.image("missile", "missile.png");            // missile
         l.image("enemy2", "ship_0012.png");                // bigger enemy plane
         l.image("enemy", "ship_0018.png");                // basic enemy plane
+        l.image("boss", "ship_00151.png");               // boss enemy plane
         l.image("health", "tile_0024.png");              // health indicator
         l.image("boom", "tile_0005.png");                 // explodey
-        l.tilemapTiledJSON("map", "Background.json");     // tilemap JSON
+        //l.tilemapTiledJSON("map", "Background.json");     // tilemap JSON
         for (let i = 0; i <= 9; i++) {                   // digits for score
             this.load.image(`digit_${i}`, `digit_${i}.png`);
         }
@@ -31,6 +32,7 @@ class Move extends Phaser.Scene {
     create() {
         let my = this.my;
 
+        //background & UI vars and etc. ---------------------------------------
         this.shootSound = this.sound.add("shoot");
         this.explodeSound = this.sound.add("explosion");
         this.hitSound = this.sound.add("clang");
@@ -78,19 +80,23 @@ class Move extends Phaser.Scene {
             this.hpDigitSprites.push(hpDig);
         } this.updateHpDisplay();
 
+        //Sprite Groups & Sprite related variables ------------------------------
         //plane sprite
         my.sprite.playerPlane = this.physics.add.sprite(300, 850, "Plane"); 
         my.sprite.playerPlane.setScale(3);
 
         //Trash enemy sprite group
         this.trashMobs = this.physics.add.group();
-        this.collidersTime = Phaser.Math.Between(1000, 3000);
+        this.collidersTime = Phaser.Math.Between(700, 1500);
         this.trashHP = 3;
         
         //trash enemy spawner
         this.time.addEvent({
-            delay: this.collidersTime, // spawn random 0.5-3 seconds
-            callback: () => this.spawnTrash(),
+            delay: this.collidersTime, // spawn random 0.4-1.5 seconds
+            callback: () => {
+                this.spawnTrash(),
+                this.collidersTime = Phaser.Math.Between(400, 1500)
+            },
             loop: true
         });
 
@@ -102,7 +108,10 @@ class Move extends Phaser.Scene {
         //reg enemy spawner
         this.time.addEvent({
             delay: this.mobsTime,  //spawn every 4-8 seconds
-            callback: () => this.spawnReg(),
+            callback: () => {
+                this.spawnReg(),
+                this.collidersTime = Phaser.Math.Between(4000, 8000)
+            },
             loop: true
         });
         //regular enemy pathing
@@ -115,14 +124,32 @@ class Move extends Phaser.Scene {
             360, 990
         ];
 
+        // boss enemy group
+        this.bossMobs = this.physics.add.group();
+        this.bossTime = 60;
+        this.enemykill = 60;
+        this.bossActive = 0;
+        this.bossHP = 80;
+        //boss starting path
+        this.bossStartPath = [
+            750, 700,
+            100, 200
+        ];
+        //boss looping path
+        this.bossLoopPath = [
+            100, 200,
+            500, 200
+        ];
+
         // Boolat sprite group w/ physics
         my.sprite.Boolats = this.physics.add.group();
         my.sprite.evilBoolats = this.physics.add.group();
+        my.sprite.evilerBoolats = this.physics.add.group();
 
         this.boolatDmg = 1;  //initalize boolat damage
         this.shootCDC = 0;  //initalize boolat cooldown
         this.Cooldown = 3; //time between shots
-        this.maxBoolat = 12; //max number of boolats
+        this.maxBoolat = 10; //max number of boolats
 
 
         //Physics events ----------------------------
@@ -130,18 +157,18 @@ class Move extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.playerPlane, this.trashMobs, (playerPlane, trash) => {
             this.bigBoom(playerPlane);
             this.damageSound.play({
-                volume: 0.5,
+                volume: 0.8,
             });
 
             trash.destroy();
-            this.playerHP -= trash.health * 300;
+            this.playerHP -= trash.health * 3;
             this.updateHpDisplay();
         });
         //reg enemy hitting player
         this.physics.add.overlap(my.sprite.playerPlane, this.regMobs, (playerPlane, mob) => {
             this.bigBoom(playerPlane);
             this.damageSound.play({
-                volume: 0.5,
+                volume: 0.8,
             });
 
             mob.destroy();
@@ -152,11 +179,22 @@ class Move extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.playerPlane, my.sprite.evilBoolats, (playerPlane, evilBoolat) => {
             this.smallBoom(playerPlane);
             this.damageSound.play({
-                volume: 0.5,
+                volume: 0.8,
             });
 
             evilBoolat.destroy();
             this.playerHP -= 5;
+            this.updateHpDisplay();
+        });
+        //evilerBoolat hitting player
+        this.physics.add.overlap(my.sprite.playerPlane, my.sprite.evilerBoolats, (playerPlane, evilBoolat) => {
+            this.bigBoom(playerPlane);
+            this.damageSound.play({
+                volume: 0.8,
+            });
+
+            evilBoolat.destroy();
+            this.playerHP -= 10;
             this.updateHpDisplay();
         });
         //bullets hitting trash
@@ -177,6 +215,7 @@ class Move extends Phaser.Scene {
                     volume: 0.3,
                 });
                 trash.destroy();  //disable dead enemy
+                this.enemykill += 1;
                 this.score += 50;
                 this.updateScoreDisplay();
             }
@@ -200,6 +239,33 @@ class Move extends Phaser.Scene {
                 });
                 mob.destroy();  //disable dead enemy
                 this.score += 500;
+                this.enemykill += 5;
+                this.updateScoreDisplay();
+            }
+        });
+        //bullets hitting boss mobs
+        this.physics.add.overlap(my.sprite.Boolats, this.bossMobs, (boolat, boss) => {
+            boolat.destroy();
+            this.hitSound.play({
+                volume: 0.2,
+            });
+            this.smallBoom(boss);
+
+            boss.health -= this.boolatDmg;
+            this.score += 5;
+            this.updateScoreDisplay();
+        
+            if (boss.health <= 0) {
+                this.bigBoom(boss);
+                this.explodeSound.play({
+                    volume: 0.5,
+                });
+                if (boss.fireTimer) {
+                    boss.fireTimer.remove(false);
+                }
+                boss.destroy();  //disable dead enemy
+                this.bossActive = 0;
+                this.score += 3330;
                 this.updateScoreDisplay();
             }
         });
@@ -212,6 +278,9 @@ class Move extends Phaser.Scene {
         this.shift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
         this.left = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
         this.right = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+
+        //control screen
+        this.scene.launch('controls');
     }
 
     update() {
@@ -222,15 +291,15 @@ class Move extends Phaser.Scene {
         }
         
         //movment left and right
-        if (this.left.isDown && my.sprite.playerPlane.x > 0) {
+        if (this.left.isDown && my.sprite.playerPlane.x > 40) {
             my.sprite.playerPlane.x -= 8;
-            if (this.shift.isDown && my.sprite.playerPlane.x > 0) {
+            if (this.shift.isDown && my.sprite.playerPlane.x > 40) {
                 my.sprite.playerPlane.x -= 8;
             }
         }
-        if (this.right.isDown && my.sprite.playerPlane.x < 600) {
+        if (this.right.isDown && my.sprite.playerPlane.x < 560) {
             my.sprite.playerPlane.x += 8;
-            if (this.shift.isDown && my.sprite.playerPlane.x < 600) {
+            if (this.shift.isDown && my.sprite.playerPlane.x < 560) {
                 my.sprite.playerPlane.x += 8;
             }
         }
@@ -261,9 +330,12 @@ class Move extends Phaser.Scene {
             }
         }
         for (let Proj of my.sprite.evilBoolats.getChildren()) {
-            if (Proj) {
-               Proj.y += 10;
+            // deactivate if off screen
+            if (Proj.y > 950) {
+                Proj.destroy();
             }
+        }
+        for (let Proj of my.sprite.evilerBoolats.getChildren()) {
             // deactivate if off screen
             if (Proj.y > 950) {
                 Proj.destroy();
@@ -291,6 +363,12 @@ class Move extends Phaser.Scene {
             this.scene.pause();
         }
         
+        //boss spawning after x kills
+        if (this.enemykill >= this.bossTime && this.bossActive == 0) {
+            this.spawnBoss();
+            this.enemykill = 0;
+        }
+        
     }
 
     spawnTrash() {
@@ -311,22 +389,46 @@ class Move extends Phaser.Scene {
     }
 
 
-    /*spawnBig() {
-        let mob = this.regMobs.getFirstDead();
+    spawnBoss() {    
+        //path setup
+        let startPath = new Phaser.Curves.Spline(this.bossStartPath);
+        let loopPath = new Phaser.Curves.Spline(this.bossLoopPath);
+        let boss = this.add.follower(startPath, startPath.points[0].x, startPath.points[0].y, 'boss');
+        this.physics.add.existing(boss); 
+        this.bossMobs.add(boss);
+        this.bossActive = 1;
     
-        if (!mob) {
-            mob = this.regMobs.create(Phaser.Math.Between(50, 550), -50, 'enemy2'); // assuming 600px wide screen
-            mob.setFlipY(true);
-            mob.setScale(2.5);
-            mob.setVelocityY(100);
-            mob.setCollideWorldBounds(false);
-        } else {
-            mob.setPosition(Phaser.Math.Between(50, 550), -50);
-            mob.setVelocityY(100);
-            mob.setActive(true).setVisible(true);
-        }
-        mob.health = this.regHP;
-    } */
+        boss.setScale(4);
+    
+        boss.startFollow({
+            from: 0,
+            to: 1,
+            duration: 3000,
+            ease: 'Linear',
+            repeat: 0,
+            rotateToPath: false,
+            rotationOffset: -90,
+            onComplete: () => {
+                boss.fireTimer = this.time.addEvent({
+                    delay: 4000, //every 4 seconds
+                    loop: true,
+                    callback: () => this.spawnBossBoolat(boss)
+                });
+                boss.setPath(loopPath);
+                boss.startFollow({
+                    from: 0,
+                    to: 1,
+                    duration: 10000,
+                    ease: 'Linear',
+                    repeat: -1,
+                    rotateToPath: false,
+                    yoyo: true,
+                    rotationOffset: -90,
+                });
+            }
+        });
+        boss.health = this.bossHP;
+    }
 
     spawnReg() {
         //let mob = this.regMobs.getFirstDead();
@@ -340,8 +442,7 @@ class Move extends Phaser.Scene {
     
         mob.setScale(2.5);
         mob.setFlipY(true);
-        mob.health = this.regHP;
-    
+
         mob.startFollow({
             from: 0,
             to: 1,
@@ -382,11 +483,37 @@ class Move extends Phaser.Scene {
         mob.health = this.regHP;
     }
 
+    spawnBossBoolat(boss) {
+        const player = this.my.sprite.playerPlane;
+    
+        // Create evil boolat at boss location
+        let boolat2 = this.physics.add.sprite(boss.x, boss.y + 30, "evilBoolat");
+        let boolat3 = this.physics.add.sprite(boss.x, boss.y + 30, "evilBoolat");
+        let boolat = this.physics.add.sprite(boss.x, boss.y + 30, "missile");
+        boolat2.setScale(2).setFlipY(true);
+        boolat3.setScale(2).setFlipY(true);
+        boolat.setScale(4);
+        boolat.setFlipY(true);
+        this.my.sprite.evilerBoolats.add(boolat);
+        this.my.sprite.evilBoolats.add(boolat2);
+        this.my.sprite.evilBoolats.add(boolat3);
+    
+        // Calculate velocity vector from boss to player
+        const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
+        const speed = 500; // tweak for difficulty
+        const velocity = this.physics.velocityFromRotation(angle, speed);
+    
+        boolat.setVelocity(velocity.x, velocity.y);
+        boolat2.setVelocity(velocity.x-120, velocity.y);
+        boolat3.setVelocity(velocity.x+120, velocity.y);
+    }
+
     spawnEvilBoolat(name) {
         let evilBoolat = this.physics.add.sprite(name.x, name.y + 27, "evilBoolat");
-        evilBoolat.setFlipY(true);
-        evilBoolat.setScale(2);
         this.my.sprite.evilBoolats.add(evilBoolat);
+        evilBoolat.setFlipY(true);
+        evilBoolat.setVelocityY(200);
+        evilBoolat.setScale(2);
     }
 
     updateScoreDisplay() {
