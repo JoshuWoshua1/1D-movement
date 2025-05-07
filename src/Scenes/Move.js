@@ -92,7 +92,7 @@ class Move extends Phaser.Scene {
         
         //trash enemy spawner
         this.time.addEvent({
-            delay: this.collidersTime, // spawn random 0.4-1.5 seconds
+            delay: this.collidersTime, //   spawn random 0.4-1.5 seconds
             callback: () => {
                 this.spawnTrash(),
                 this.collidersTime = Phaser.Math.Between(400, 1500)
@@ -127,7 +127,7 @@ class Move extends Phaser.Scene {
         // boss enemy group
         this.bossMobs = this.physics.add.group();
         this.bossTime = 40;
-        this.enemykill = 40;
+        this.enemykill = 0;
         this.bossActive = 0;
         this.bossHP = 70;
         this.bossKilled = false;
@@ -150,7 +150,7 @@ class Move extends Phaser.Scene {
         this.boolatDmg = 1;  //initalize boolat damage
         this.shootCDC = 0;  //initalize boolat cooldown
         this.Cooldown = 3; //time between shots
-        this.maxBoolat = 10; //max number of boolats
+        this.maxBoolat = 8; //max number of boolats
 
 
         //Physics events ----------------------------

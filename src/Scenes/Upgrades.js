@@ -16,11 +16,11 @@ class Upgrades extends Phaser.Scene {
     create() {
         this.add.rectangle(300, 600, 600, 200, 0x000000, 0.7);
         this.add.image(220, 540, "one").setScale(3);
-        this.add.text(300, 525, ": heal 40 HP", { fontSize: '24px', color: '#ffffff' });
+        this.add.text(270, 525, ": heal 40 HP", { fontSize: '24px', color: '#ffffff' });
         this.add.image(220, 590, "two").setScale(3);
-        this.add.text(300, 575, ": +1 Max bullets", { fontSize: '24px', color: '#ffffff' });
-        this.add.image(220, 640, "two").setScale(3);
-        this.add.text(300, 625, ": +20% bullet speed", { fontSize: '24px', color: '#ffffff' });
+        this.add.text(270, 575, ": +1 Max bullets", { fontSize: '24px', color: '#ffffff' });
+        this.add.image(220, 640, "three").setScale(3);
+        this.add.text(270, 625, ": +5% Attack speed", { fontSize: '24px', color: '#ffffff' });
 
         let game = this.scene.get("move");
         game.bossKilled = false;
@@ -34,7 +34,13 @@ class Upgrades extends Phaser.Scene {
         });
 
         this.input.keyboard.on('keydown-TWO', () => {
-            game.boolatDmg += 1;
+            game.maxBoolat += 1;
+            this.scene.stop();
+            this.scene.resume("move");
+        });
+
+        this.input.keyboard.on('keydown-THREE', () => {
+            game.Cooldown *= 0.95;
             this.scene.stop();
             this.scene.resume("move");
         });
